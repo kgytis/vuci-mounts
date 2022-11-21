@@ -1,13 +1,15 @@
 <template>
   <a-modal :visible="toggleModal" footer @cancel="closeModal" @ok="closeModal">
+    <a-spin v-if="uploading" tip="Uploading..."/>
     <div class="header" @click="removeActiveClass">
       <p v-if="!updPath" class="">Path: {{ path }}</p>
       <p v-else>Path: {{ updPath }}</p>
-      <div>
+      <!-- <div>
       <a-button @click="handleBack" v-show="!(path === updPath || !updPath)" :disabled="path === updPath || !updPath">Back</a-button>
-      </div>
+      </div> -->
     </div>
-    <div @click="handleBodyClick" id="modalBody">
+    <div @click="handleBodyClick" id="modalBody" :style="{'max-height': '500px', 'overflow': 'auto'}">
+      <file-explorer name=".." type="back" @back="handleBack" v-if="updPath !== path && updPath !== ''"/>
       <file-explorer
         v-for="(item, i) in files"
         :key="i"
@@ -22,7 +24,7 @@
     <div class="actions" @click="removeActiveClass">
       <add-new @addNew="add" :files="files"></add-new>
       <a-upload action="/upload" :data="{ path: uploadPath }" @change="handleUpload" :beforeUpload="beforeUpload" :showUploadList="false">
-        <a-button :style="{ margin: '1rem 0.3rem' }"><a-icon type="upload"/>Upload</a-button>
+        <a-button :style="{ margin: '1rem 0.3rem' }"><a-icon type="upload"/>Upload file</a-button>
       </a-upload>
       </div>
       <a-modal :visible="uplVis" @ok="overrideFile(true)" @cancel="overrideFile(false)">
@@ -61,11 +63,12 @@ export default {
       files: [],
       actCounter: 0,
       updPath: '',
-      size: 10000,
+      size: 100000000,
       fileName: '',
       uplVis: false,
       resolveGlobal: undefined,
-      rejectGlobal: undefined
+      rejectGlobal: undefined,
+      uploading: false
     }
   },
   computed: {
@@ -134,12 +137,18 @@ export default {
         this.$message.error(`File size exceeds ${this.size}B limit.`)
         return
       }
-      if (status === 'uploading' || status === 'removed') return
+      // if (status === 'uploading' || status === 'removed') return
+      if (status === 'uploading') {
+        this.uploading = true
+        return
+      }
       if (status !== 'done') {
+        this.uploading = false
         this.$message.error(`upload '${this.fileName}' failed.`)
         return
       }
       if (status === 'done') {
+        this.uploading = false
         this.$message.success(`File '${this.fileName}' uploaded.`)
         this.$emit('uploadedFile')
       }

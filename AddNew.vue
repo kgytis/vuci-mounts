@@ -1,6 +1,6 @@
 <template>
   <div>
-    <a-button type="primary" @click="openModal">Add new</a-button>
+    <a-button type="primary" @click="openModal">Create folder</a-button>
     <a-popover title="Add new file" trigger="click" v-model="addVisible" placement="bottom">
       <template #content>
         <a-form :model="formState" @submit.prevent>

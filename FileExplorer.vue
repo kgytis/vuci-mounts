@@ -2,15 +2,16 @@
   <div class="cardContainer" @click="handleCardClick(reworkedName)" @dblclick="handleDblClick">
     <div class="card">
       <div class="folders">
-        <img v-if="type === 'directory'" src="/icons/folder-br.png" />
+        <img v-if="type === 'back'" src="/icons/folder-br.png" class="back" @click="back"/>
+        <img v-else-if="type === 'directory'" src="/icons/folder-br.png" />
         <img v-else-if="type === 'file'" src="/icons/document.png" />
         <p :id="reworkedName" class="name">{{ name }}</p>
       </div>
-      <div class="actions">
+      <div class="actions" v-if="type !== 'back'">
+        <img v-if="type !== 'directory'" class="icon downIcon" src="/icons/download.png" @click="download"/>
         <a-popconfirm :title="`Are you sure you want to delete ${name}?`" ok-text="Yes" cancel-text="No" @confirm="confirmDelete" placement="rightBottom">
           <img class="icon delIcon" src="/icons/delete.png" @click="handleDelIcon" />
         </a-popconfirm>
-        <img v-if="type !== 'directory'" class="icon downIcon" src="/icons/download.png" @click="download"/>
       </div>
     </div>
     <form v-if="currPath && type !== 'directory'" ref="form" method="POST" action="/download">
@@ -50,12 +51,12 @@ export default {
     },
     // rework of file name to assign as ID (for style purposes / one click)
     reworkedName () {
-      return this.name.replace('.', '_')
+      return this.name.replace('.', '_').replace(/\s/g, '_')
     }
   },
   methods: {
     handleCardClick (newName) {
-      if (this.type !== 'addFile') {
+      if (this.type !== 'back') {
         this.clearActivity()
         document.querySelector(`#${newName}`).classList.add('active')
       }
@@ -81,6 +82,9 @@ export default {
     },
     handleDelIcon () {
       this.clearActivity()
+    },
+    back () {
+      this.$emit('back')
     }
   },
   watch: {
@@ -124,7 +128,6 @@ img {
 .active {
   background-color: #1890ff;
   color: white;
-  padding: 0 5px;
 }
 .icon {
   cursor: pointer;
@@ -140,6 +143,10 @@ img {
   align-items: center;
   margin-left: 0.3rem;
   padding: 0.3rem 0;
+}
+
+.back{
+  cursor: pointer
 }
 
 </style>

@@ -1,20 +1,44 @@
 <template>
   <div>
-    <a-table :loading="mounts.length === 0" :columns="columns" :data-source="mounts" defaultExpandAllRows>
+    <a-table
+      v-if="!error"
+      :loading="mounts.length === 0"
+      :columns="columns"
+      :data-source="mounts"
+      defaultExpandAllRows
+    >
       <template #memory="record">
         <span>
-          <vuci-progress-bar :value="formatPercentage(record)"/>
+          <vuci-progress-bar
+            :value="formatPercentage(record)"
+            :show-info="false"
+            :title="`Used ${record.used}/${record.available}`"
+          />
         </span>
       </template>
       <template #actions="record">
         <span>
-          <a-button key="file-explorer" style="padding: 0rem 0.2rem" @click="handleModal(record.mountpoint)">
+          <a-button
+            key="file-explorer"
+            style="padding: 0rem 0.2rem"
+            @click="handleModal(record.mountpoint)"
+          >
             <img src="/icons/folder-icon.png" />
           </a-button>
         </span>
       </template>
     </a-table>
-    <custom-modal @closeModal="handleModal" :toggleModal="toggleModal" :path="mountpoint" :fileCounter="fileCounter" @addNew="handleAddition" @deleteItem="handleDelete" @uploadedFile="fileCounter++"></custom-modal>
+    <custom-modal
+      v-if="!error"
+      @closeModal="handleModal"
+      :toggleModal="toggleModal"
+      :path="mountpoint"
+      :fileCounter="fileCounter"
+      @addNew="handleAddition"
+      @deleteItem="handleDelete"
+      @uploadedFile="fileCounter++"
+    ></custom-modal>
+    <div v-else><h1>No mounts detected</h1></div>
   </div>
 </template>
 
@@ -26,6 +50,9 @@ export default {
     CustomModal,
     VuciProgressBar
   },
+  // timers: {
+  //   update: { time: 1000, autostart: true, immediate: true, repeat: true }
+  // },
   data () {
     return {
       mounts: [],
@@ -33,19 +60,27 @@ export default {
         { dataIndex: 'mountpoint', key: 'mountpoint', title: 'Mountpoint' },
         { dataIndex: 'dev', key: 'dev', title: 'Device' },
         { dataIndex: 'fs', key: 'fs', title: 'Filesystem' },
-        { dataIndex: 'used_percentage', key: 'used_percentage', title: 'Used memory percentage', scopedSlots: { customRender: 'memory' } },
+        {
+          dataIndex: 'used_percentage',
+          key: 'used_percentage',
+          title: 'Used memory percentage',
+          scopedSlots: { customRender: 'memory' }
+        },
         { key: 'actions', title: '', scopedSlots: { customRender: 'actions' } }
       ],
       toggleModal: false,
       mountpoint: '',
-      fileCounter: 0
+      fileCounter: 0,
+      memoryUsed: 0,
+      memoryAvail: 0,
+      error: false
     }
   },
   methods: {
     // additional formatting for progress bar
     formatPercentage (data) {
-      const index = data.search('%')
-      const percentage = Number(data.slice(0, index))
+      const index = data.used_percentage.search('%')
+      const percentage = Number(data.used_percentage.slice(0, index))
       return percentage
     },
     async getMountsData () {
@@ -54,21 +89,40 @@ export default {
         command: '/bin/fmt-usb-msd.sh',
         params: ['unmountable']
       })
-      // hard coded default value of usb port
-      const convertedData = JSON.parse(data.stdout)['/dev/sda2']
+      const keys = Object.keys(JSON.parse(data.stdout))
+      if (keys.length === 0) {
+        this.error = true
+        return
+      }
+      this.error = false
+      // this approach only if one usb port present
+      // code should be a bit changed if more than one usb port present
+      const convertedData = JSON.parse(data.stdout)[keys[0]]
       return [convertedData]
     },
     async setMountsData () {
       const data = await this.getMountsData()
+      if (!data) {
+        this.error = true
+        return
+      }
+      this.error = false
       const convertedData = data.map((el, i) => {
         return {
           key: `mount-${i}`,
-          ...el
+          mountpoint: el.mountpoint,
+          dev: el.dev,
+          used_percentage: {
+            used: el.used,
+            available: el.available,
+            used_percentage: el.used_percentage
+          },
+          fs: el.fs
         }
       })
       this.mounts = convertedData
     },
-    handleModal (mountpoint) {
+    async handleModal (mountpoint) {
       mountpoint ? (this.mountpoint = mountpoint) : (this.mountpoint = '')
       this.toggleModal = !this.toggleModal
     },
@@ -81,7 +135,11 @@ export default {
         params = [file]
       } else {
         file = data.path + '/' + data.name
-        command === 'mkdir' ? (params = ['-p', file]) : (params = [file])
+        if (command === 'mkdir') {
+          params = ['-p', file]
+        } else if (command === 'rm') {
+          params = ['-rf', file]
+        }
       }
       await this.$rpc.ubus('file', 'exec', {
         command: command,
@@ -93,11 +151,23 @@ export default {
     },
     async handleAddition (data) {
       // for handleFiles function should be passed 2 params. 1 - string command, 2 - data object (file name + path to file(incl file))
-      !data.name.includes('.') ? await this.handleFiles('mkdir', data) : await this.handleFiles('touch', data)
+      !data.name.includes('.')
+        ? await this.handleFiles('mkdir', data)
+        : await this.handleFiles('touch', data)
     },
     async handleDelete (data) {
-      !data.name.includes('.') ? await this.handleFiles('rmdir', data) : await this.handleFiles('rm', data)
+      !data.name.includes('.')
+        ? await this.handleFiles('rm', data)
+        : await this.handleFiles('rm', data)
     }
+    // async update () {
+    //   const data = await this.getMountsData()
+    //   console.log(data)
+    //   if (!data) {
+    //     this.error = true
+    //     return
+    //   } return
+    // }
   },
   async created () {
     await this.setMountsData()
