@@ -112,9 +112,11 @@ export default {
       this.clearActivity()
     },
     validate () {
-      this.formState.name.value.length === 0
-        ? (this.formState.name.isValid = false)
-        : (this.formState.name.isValid = true)
+      if (this.formState.name.value.length === 0) {
+        this.formState.name.isValid = false
+        this.fileExists = false
+        return
+      } this.formState.name.isValid = true
     },
     // method to add new file/folder. With minimal validation. Two same files cannot be added and input field cannot be empty
     onSubmit () {
