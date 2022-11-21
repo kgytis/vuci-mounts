@@ -1,22 +1,11 @@
 <template>
   <a-modal :visible="toggleModal" footer @cancel="closeModal" @ok="closeModal">
-    <div class="header">
-      <p v-if="!updPath">{{ path }}</p>
-      <p v-else>{{ updPath }}</p>
-      <a-button @click="handleBack" :disabled="path === updPath || !updPath"
-        >Back</a-button
-      >
-      <a-upload
-        action="/upload"
-        :data="{ path: uploadPath }"
-        @change="handleUpload"
-        :beforeUpload="beforeUpload"
-        :showUploadList="false"
-      >
-        <a-button :style="{ margin: '1rem 0.3rem' }"
-          ><a-icon type="upload" />Upload</a-button
-        >
-      </a-upload>
+    <div class="header" @click="removeActiveClass">
+      <p v-if="!updPath" class="">Path: {{ path }}</p>
+      <p v-else>Path: {{ updPath }}</p>
+      <div>
+      <a-button @click="handleBack" v-show="!(path === updPath || !updPath)" :disabled="path === updPath || !updPath">Back</a-button>
+      </div>
     </div>
     <div @click="handleBodyClick" id="modalBody">
       <file-explorer
@@ -29,30 +18,29 @@
         @doubleClick="handleDblClick({ name: item.name, type: item.type })"
         @deleteItem="deleteItem"
       />
-      <!-- Additional icon that add new file would be displayed -->
-      <file-explorer
-        name="Add new"
-        type="addFile"
-        :files="files"
-        :actCounter="actCounter"
-        @addNew="add"
-      />
+    </div>
+    <div class="actions" @click="removeActiveClass">
+      <add-new @addNew="add" :files="files"></add-new>
+      <a-upload action="/upload" :data="{ path: uploadPath }" @change="handleUpload" :beforeUpload="beforeUpload" :showUploadList="false">
+        <a-button :style="{ margin: '1rem 0.3rem' }"><a-icon type="upload"/>Upload</a-button>
+      </a-upload>
+      </div>
       <a-modal :visible="uplVis" @ok="overrideFile(true)" @cancel="overrideFile(false)">
         <h3>
           File with the same name exists. Would you like to overwrite
-          <u>{{ fileName }}</u
-          >?
+          <u>{{ fileName }}</u>?
         </h3>
       </a-modal>
-    </div>
   </a-modal>
 </template>
 
 <script>
 import FileExplorer from './FileExplorer.vue'
+import AddNew from './AddNew.vue'
 export default {
   components: {
-    FileExplorer
+    FileExplorer,
+    AddNew
   },
   props: {
     toggleModal: {
@@ -159,14 +147,11 @@ export default {
     // method reponsible to get all information of files in designated and assign it to global variable
     async getFiles (path) {
       if (this.path === '') return
+      const data = await this.$rpc.ubus('file', 'list', { path: path })
       // file reset
       this.files = []
-      const data = await this.$rpc.ubus('file', 'list', { path: path })
-      return data.entries
-    },
-    // sets files which were retrieved from router / usb
-    async setFiles (data) {
-      this.files = await data
+      // sets files which were retrieved from router / usb
+      this.files = await data.entries
     },
     getPath () {
       let path
@@ -180,17 +165,27 @@ export default {
     deleteItem (name) {
       const path = this.getPath()
       this.$emit('deleteItem', { name: name, path: path })
+    },
+    removeActiveClass () {
+      const cards = document.querySelectorAll('.name')
+      cards.forEach((card) => {
+        card.classList.remove('active')
+      })
     }
   },
   watch: {
-    path () {
-      this.setFiles(this.getFiles(this.path))
+    async path () {
+      await this.getFiles(this.path)
     },
-    updPath () {
-      this.setFiles(this.getFiles(this.updPath))
+    async updPath () {
+      await this.getFiles(this.updPath)
     },
-    fileCounter () {
-      this.updPath ? this.setFiles(this.getFiles(this.updPath)) : this.setFiles(this.getFiles(this.path))
+    async fileCounter () {
+      if (this.updPath) {
+        await this.getFiles(this.updPath)
+      } else {
+        await this.getFiles(this.path)
+      }
     }
   }
 }
@@ -199,5 +194,27 @@ export default {
 <style scoped>
 p {
   margin: 0;
+}
+
+#modalBody {
+  display: grid;
+  gap: 0.2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.138);
+  padding-top: 0.7rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.header {
+  height: 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
 }
 </style>

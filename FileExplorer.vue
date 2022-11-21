@@ -1,33 +1,17 @@
 <template>
   <div class="cardContainer" @click="handleCardClick(reworkedName)" @dblclick="handleDblClick">
-    <div :class="{ card: true }">
-      <a-popconfirm v-if="type !== 'addFile'" :title="`Are you sure you want to delete ${name}?`" ok-text="Yes" cancel-text="No" @confirm="confirmDelete" placement="rightBottom">
-        <img v-if="type !== 'addFile'" class="icon delIcon" src="/icons/delete.png" @click="handleDelIcon" />
-      </a-popconfirm>
-      <img v-if="type !== 'addFile' && type !== 'directory'" class="icon downIcon" src="/icons/download.png" @click="download"/>
-      <img v-if="type === 'directory'" src="/icons/folder-br.png" />
-      <img v-else-if="type === 'file'" src="/icons/document.png" />
-      <a-popover v-else title="Add new file" trigger="click" v-model="addVisible" placement="bottom">
-        <template #content>
-          <a-form :model="formState" @submit.prevent>
-            <a-form-item style="margin: 0.2rem">
-              <a-input @blur="formState.name.isValid = true" v-model="formState.name.value" placeholder="File name..."/>
-            </a-form-item>
-            <p v-if="!formState.name.isValid" class="error">
-              Input cannot be empty
-            </p>
-            <p v-if="fileExists" class="error">
-              File with this name already exists
-            </p>
-            <a-form-item style="margin: 0">
-              <a-button type="primary" @click="onSubmit">Create</a-button>
-              <a-button @click="onCancel" :style="{ margin: '0 0.3rem' }">Cancel</a-button>
-            </a-form-item>
-          </a-form>
-        </template>
-        <img src="/icons/add-file.png" :style="{ cursor: 'pointer' }" />
-      </a-popover>
-      <p :id="reworkedName" class="name">{{ name }}</p>
+    <div class="card">
+      <div class="folders">
+        <img v-if="type === 'directory'" src="/icons/folder-br.png" />
+        <img v-else-if="type === 'file'" src="/icons/document.png" />
+        <p :id="reworkedName" class="name">{{ name }}</p>
+      </div>
+      <div class="actions">
+        <a-popconfirm :title="`Are you sure you want to delete ${name}?`" ok-text="Yes" cancel-text="No" @confirm="confirmDelete" placement="rightBottom">
+          <img class="icon delIcon" src="/icons/delete.png" @click="handleDelIcon" />
+        </a-popconfirm>
+        <img v-if="type !== 'directory'" class="icon downIcon" src="/icons/download.png" @click="download"/>
+      </div>
     </div>
     <form v-if="currPath && type !== 'directory'" ref="form" method="POST" action="/download">
       <input v-show="false" type="text" :value="downloadPath" name="path" />
@@ -55,19 +39,6 @@ export default {
     },
     files: {
       type: Array
-    }
-  },
-  data () {
-    return {
-      activeCard: false,
-      formState: {
-        name: {
-          value: '',
-          isValid: true
-        }
-      },
-      addVisible: false,
-      fileExists: false
     }
   },
   computed: {
@@ -110,35 +81,6 @@ export default {
     },
     handleDelIcon () {
       this.clearActivity()
-    },
-    validate () {
-      if (this.formState.name.value.length === 0) {
-        this.formState.name.isValid = false
-        this.fileExists = false
-        return
-      } this.formState.name.isValid = true
-    },
-    // method to add new file/folder. With minimal validation. Two same files cannot be added and input field cannot be empty
-    onSubmit () {
-      this.validate()
-      const name = this.formState.name.value
-      if (name) {
-        const foundVal = this.files.findIndex((file) => file.name === name)
-        if (foundVal === -1) {
-          this.$emit('addNew', name)
-          this.addVisible = !this.addVisible
-          this.formState.name.value = ''
-          this.fileExists = false
-        } else {
-          this.fileExists = true
-        }
-      }
-    },
-    onCancel () {
-      this.addVisible = !this.addVisible
-      this.formState.name.value = ''
-      this.fileExists = false
-      this.formState.name.isValid = true
     }
   },
   watch: {
@@ -167,40 +109,37 @@ img {
 }
 
 .card {
-  width: 70px;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  padding: 0;
-  margin: 0 0.4rem;
-  position: relative;
+  margin: 0.3rem 0;
+  border: 1px solid rgba(0, 0, 0, 0.138);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
 }
 
 .cardContainer {
-  display: inline-block;
+  width: 100%;
 }
 
 .active {
   background-color: #1890ff;
   color: white;
+  padding: 0 5px;
 }
 .icon {
-  width: 15px;
-  position: absolute;
-  right: 0.2rem;
   cursor: pointer;
-}
-.delIcon {
-  right: 0.2rem;
-}
-
-.downIcon {
-  left: 0.2rem;
+  width: 1.5rem;
+  margin: 0 0.6rem;
 }
 
-.error {
-  color: red;
-  margin: 0;
-  padding: 0;
+.folders {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-left: 0.3rem;
+  padding: 0.3rem 0;
 }
+
 </style>
