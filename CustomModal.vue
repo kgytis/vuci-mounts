@@ -3,9 +3,19 @@
     <div class="header">
       <p v-if="!updPath">{{ path }}</p>
       <p v-else>{{ updPath }}</p>
-      <a-button @click="handleBack" :disabled="path === updPath || !updPath">Back</a-button>
-      <a-upload action="/upload" :data="{ path: uploadPath }" @change="handleUpload" :beforeUpload="beforeUpload" :showUploadList="false">
-        <a-button :style="{ margin: '1rem 0.3rem' }"><a-icon type="upload" />Upload</a-button>
+      <a-button @click="handleBack" :disabled="path === updPath || !updPath"
+        >Back</a-button
+      >
+      <a-upload
+        action="/upload"
+        :data="{ path: uploadPath }"
+        @change="handleUpload"
+        :beforeUpload="beforeUpload"
+        :showUploadList="false"
+      >
+        <a-button :style="{ margin: '1rem 0.3rem' }"
+          ><a-icon type="upload" />Upload</a-button
+        >
       </a-upload>
     </div>
     <div @click="handleBodyClick" id="modalBody">
@@ -20,9 +30,19 @@
         @deleteItem="deleteItem"
       />
       <!-- Additional icon that add new file would be displayed -->
-      <file-explorer name="Add new" type="addFile" :files="files" :actCounter="actCounter" @addNew="add" />
-      <a-modal :visible="uplVis" @ok="ok" @cancel="cancel">
-        <h3>File with the same name exists. Would you like to overwrite <u>{{ fileName }}</u>?</h3>
+      <file-explorer
+        name="Add new"
+        type="addFile"
+        :files="files"
+        :actCounter="actCounter"
+        @addNew="add"
+      />
+      <a-modal :visible="uplVis" @ok="overrideFile(true)" @cancel="overrideFile(false)">
+        <h3>
+          File with the same name exists. Would you like to overwrite
+          <u>{{ fileName }}</u
+          >?
+        </h3>
       </a-modal>
     </div>
   </a-modal>
@@ -56,10 +76,12 @@ export default {
       size: 10000,
       fileName: '',
       uplVis: false,
-      resolveGlobal: undefined
+      resolveGlobal: undefined,
+      rejectGlobal: undefined
     }
   },
   computed: {
+    // path where file should be uploaded
     uploadPath () {
       if (!this.updPath) {
         return `${this.path}/${this.fileName}`
@@ -71,12 +93,13 @@ export default {
       this.$emit('closeModal')
       this.updPath = ''
     },
-    ok () {
-      this.resolveGlobal(true)
-      this.uplVis = false
-    },
-    cancel () {
-      this.resolveGlobal(false)
+    // promise resolve/reject whether duplicate file should be overriden
+    overrideFile (value) {
+      if (value) {
+        this.resolveGlobal(true)
+      } else {
+        this.rejectGlobal(undefined)
+      }
       this.uplVis = false
     },
     handleBodyClick (e) {
@@ -86,6 +109,7 @@ export default {
       }
     },
     handleDblClick (props) {
+      // updates path when double clicked on folder
       const { name } = props
       if (this.updPath === '') {
         this.updPath = this.path + '/' + name
@@ -94,6 +118,7 @@ export default {
       }
     },
     handleBack () {
+      // back is allowed if only paths are not equal
       if (this.updPath !== this.path) {
         const index = this.updPath.lastIndexOf('/')
         this.updPath = this.updPath.slice(0, index)
@@ -104,18 +129,15 @@ export default {
       const fileSearch = this.files.find((file) => {
         return file.name === this.fileName
       })
-      let upl
+      // creates a promise which will be resolved when buttons of modal is clicked, this prmose created only of duplicate file is found
       if (fileSearch) {
         this.uplVis = true
-        upl = await new Promise((resolve) => {
+        const upl = await new Promise((resolve, reject) => {
           this.resolveGlobal = resolve
+          this.rejectGlobal = reject
         })
+        if (upl) return upl
       }
-      // aditional comparison to undefined invoked due to global component undefined
-      if (!upl && typeof upl !== 'undefined') {
-        this.$message.info('Please change file name')
-      }
-      return upl
     },
     handleUpload (info) {
       const file = info.file
@@ -134,12 +156,17 @@ export default {
         this.$emit('uploadedFile')
       }
     },
+    // method reponsible to get all information of files in designated and assign it to global variable
     async getFiles (path) {
       if (this.path === '') return
       // file reset
       this.files = []
       const data = await this.$rpc.ubus('file', 'list', { path: path })
-      this.files = data.entries
+      return data.entries
+    },
+    // sets files which were retrieved from router / usb
+    async setFiles (data) {
+      this.files = await data
     },
     getPath () {
       let path
@@ -157,13 +184,13 @@ export default {
   },
   watch: {
     path () {
-      this.getFiles(this.path)
+      this.setFiles(this.getFiles(this.path))
     },
     updPath () {
-      this.getFiles(this.updPath)
+      this.setFiles(this.getFiles(this.updPath))
     },
     fileCounter () {
-      this.updPath ? this.getFiles(this.updPath) : this.getFiles(this.path)
+      this.updPath ? this.setFiles(this.getFiles(this.updPath)) : this.setFiles(this.getFiles(this.path))
     }
   }
 }

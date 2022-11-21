@@ -42,16 +42,19 @@ export default {
     }
   },
   methods: {
+    // additional formatting for progress bar
     formatPercentage (data) {
       const index = data.search('%')
       const percentage = Number(data.slice(0, index))
       return percentage
     },
     async getMountsData () {
+      // command to extract mounts primary data from router
       const data = await this.$rpc.ubus('file', 'exec', {
         command: '/bin/fmt-usb-msd.sh',
         params: ['unmountable']
       })
+      // hard coded default value of usb port
       const convertedData = JSON.parse(data.stdout)['/dev/sda2']
       return [convertedData]
     },
@@ -69,6 +72,7 @@ export default {
       mountpoint ? (this.mountpoint = mountpoint) : (this.mountpoint = '')
       this.toggleModal = !this.toggleModal
     },
+    // files handling (addition/ deletion) from child emit event. Child passes data (ref below to respective methods for more detail)
     async handleFiles (command, data) {
       let file
       let params

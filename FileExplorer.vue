@@ -1,48 +1,17 @@
 <template>
-  <div
-    class="cardContainer"
-    @click="handleCardClick(reworkedName)"
-    @dblclick="handleDblClick"
-  >
+  <div class="cardContainer" @click="handleCardClick(reworkedName)" @dblclick="handleDblClick">
     <div :class="{ card: true }">
-      <a-popconfirm
-        v-if="type !== 'addFile'"
-        :title="`Are you sure you want to delete ${name}?`"
-        ok-text="Yes"
-        cancel-text="No"
-        @confirm="confirmDelete"
-        placement="rightBottom"
-      >
-        <img
-          v-if="type !== 'addFile'"
-          class="icon delIcon"
-          src="/icons/delete.png"
-          @click="handleDelIcon"
-        />
+      <a-popconfirm v-if="type !== 'addFile'" :title="`Are you sure you want to delete ${name}?`" ok-text="Yes" cancel-text="No" @confirm="confirmDelete" placement="rightBottom">
+        <img v-if="type !== 'addFile'" class="icon delIcon" src="/icons/delete.png" @click="handleDelIcon" />
       </a-popconfirm>
-      <img
-        v-if="type !== 'addFile' && type !== 'directory'"
-        class="icon downIcon"
-        src="/icons/download.png"
-        @click="download"
-      />
+      <img v-if="type !== 'addFile' && type !== 'directory'" class="icon downIcon" src="/icons/download.png" @click="download"/>
       <img v-if="type === 'directory'" src="/icons/folder-br.png" />
       <img v-else-if="type === 'file'" src="/icons/document.png" />
-      <a-popover
-        v-else
-        title="Add new file"
-        trigger="click"
-        v-model="addVisible"
-        placement="bottom"
-      >
+      <a-popover v-else title="Add new file" trigger="click" v-model="addVisible" placement="bottom">
         <template #content>
           <a-form :model="formState" @submit.prevent>
             <a-form-item style="margin: 0.2rem">
-              <a-input
-                @blur="formState.name.isValid = true"
-                v-model="formState.name.value"
-                placeholder="File name..."
-              />
+              <a-input @blur="formState.name.isValid = true" v-model="formState.name.value" placeholder="File name..."/>
             </a-form-item>
             <p v-if="!formState.name.isValid" class="error">
               Input cannot be empty
@@ -52,9 +21,7 @@
             </p>
             <a-form-item style="margin: 0">
               <a-button type="primary" @click="onSubmit">Create</a-button>
-              <a-button @click="onCancel" :style="{ margin: '0 0.3rem' }"
-                >Cancel</a-button
-              >
+              <a-button @click="onCancel" :style="{ margin: '0 0.3rem' }">Cancel</a-button>
             </a-form-item>
           </a-form>
         </template>
@@ -62,12 +29,7 @@
       </a-popover>
       <p :id="reworkedName" class="name">{{ name }}</p>
     </div>
-    <form
-      v-if="currPath && type !== 'directory'"
-      ref="form"
-      method="POST"
-      action="/download"
-    >
+    <form v-if="currPath && type !== 'directory'" ref="form" method="POST" action="/download">
       <input v-show="false" type="text" :value="downloadPath" name="path" />
       <input v-show="false" type="text" :value="name" name="filename" />
     </form>
@@ -109,20 +71,22 @@ export default {
     }
   },
   computed: {
+    // sets path from where file should be downloaded
     downloadPath () {
       if (!this.currPath.updPath) {
         return `${this.currPath.path}/${this.name}`
       } else return `${this.currPath.updPath}/${this.name}`
     },
+    // rework of file name to assign as ID (for style purposes / one click)
     reworkedName () {
       return this.name.replace('.', '_')
     }
   },
   methods: {
-    handleCardClick (rewName) {
+    handleCardClick (newName) {
       if (this.type !== 'addFile') {
         this.clearActivity()
-        document.querySelector(`#${rewName}`).classList.add('active')
+        document.querySelector(`#${newName}`).classList.add('active')
       }
     },
     clearActivity () {
@@ -152,6 +116,7 @@ export default {
         ? (this.formState.name.isValid = false)
         : (this.formState.name.isValid = true)
     },
+    // method to add new file/folder. With minimal validation. Two same files cannot be added and input field cannot be empty
     onSubmit () {
       this.validate()
       const name = this.formState.name.value
@@ -175,6 +140,7 @@ export default {
     }
   },
   watch: {
+    // watcher to remove active class
     actCounter () {
       const cards = document.querySelectorAll('.name')
       cards.forEach((card) => {
