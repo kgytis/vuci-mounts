@@ -1,5 +1,5 @@
 <template>
-  <a-modal :visible="toggleModal" footer @cancel="closeModal" @ok="closeModal">
+  <a-modal :visible="toggleModal" footer @cancel="closeModal">
     <a-spin v-if="uploading" tip="Uploading..."/>
     <div class="header" @click="removeActiveClass">
       <p v-if="!updPath" class="">Path: {{ path }}</p>
@@ -81,7 +81,7 @@ export default {
   },
   methods: {
     closeModal () {
-      this.$emit('closeModal')
+      this.$emit('closeModal', true)
       this.updPath = ''
     },
     // promise resolve/reject whether duplicate file should be overriden
@@ -186,8 +186,8 @@ export default {
     async path () {
       await this.getFiles(this.path)
     },
-    async updPath () {
-      await this.getFiles(this.updPath)
+    async updPath (curr) {
+      curr && await this.getFiles(this.updPath)
     },
     async fileCounter () {
       if (this.updPath) {
